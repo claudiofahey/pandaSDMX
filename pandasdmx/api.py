@@ -29,7 +29,7 @@ logger = logging.getLogger('pandasdmx.api')
 
 class ResourceGetter(object):
     '''
-    Descriptor to wrap Request.get vor convenient calls 
+    Descriptor to wrap Request.get vor convenient calls
     without specifying the resource as arg.
     '''
 
@@ -99,15 +99,15 @@ class Request(object):
                 load data or metadata from files or a pre-fabricated URL. .
                 defaults to '', i.e. no agency.
 
-            cache(dict): args to be passed on to 
+            cache(dict): args to be passed on to
                 ``requests_cache.install_cache()``. Default is None (no caching).
-            log_level(int): set log level for lib-wide logger as set up in pandasdmx.__init__.py. 
-                For details see the docs on the 
+            log_level(int): set log level for lib-wide logger as set up in pandasdmx.__init__.py.
+                For details see the docs on the
                 logging package from the standard lib. Default: None (= do nothing).
-            **http_cfg: used to configure http requests. E.g., you can 
+            **http_cfg: used to configure http requests. E.g., you can
             specify proxies, authentication information and more.
-            See also the docs of the ``requests`` package at 
-            http://www.python-requests.org/en/latest/.   
+            See also the docs of the ``requests`` package at
+            http://www.python-requests.org/en/latest/.
         '''
         # If needed, generate wrapper properties for get method
         if not hasattr(self, 'data'):
@@ -144,7 +144,7 @@ class Request(object):
     def get(self, resource_type='', resource_id='', agency='', key='',
             params=None, headers={},
             fromfile=None, tofile=None, url=None, get_footer_url=(30, 3),
-            memcache=None, writer=None):
+            memcache=None, writer=None, reader=None):
         '''get SDMX data or metadata and return it as a :class:`pandasdmx.api.Response` instance.
 
         While 'get' can load any SDMX file (also as zip-file) specified by 'fromfile',
@@ -170,8 +170,8 @@ class Request(object):
             key(str, dict): select columns from a dataset by specifying dimension values.
                 If type is str, it must conform to the SDMX REST API, i.e. dot-separated dimension values.
                 If 'key' is of type 'dict', it must map dimension names to allowed dimension values. Two or more
-                values can be separated by '+' as in the str form. The DSD will be downloaded 
-                and the items are validated against it before downloading the dataset.  
+                values can be separated by '+' as in the str form. The DSD will be downloaded
+                and the items are validated against it before downloading the dataset.
             params(dict): defines the query part of the URL.
                 The SDMX web service guidelines (www.sdmx.org) explain the meaning of
                 permissible parameters. It can be used to restrict the
@@ -181,7 +181,7 @@ class Request(object):
                 depending on the values of other args such as `resource_type`.
                 Defaults to {}.
             headers(dict): http headers. Given headers will overwrite instance-wide headers passed to the
-                constructor. Defaults to None, i.e. use defaults 
+                constructor. Defaults to None, i.e. use defaults
                 from agency configuration
             fromfile(str): path to the file to be loaded instead of
                 accessing an SDMX web service. Defaults to None. If `fromfile` is
@@ -193,21 +193,21 @@ class Request(object):
             url(str): URL of the resource to download.
                 If given, any other arguments such as
                 ``resource_type`` or ``resource_id`` are ignored. Default is None.
-            get_footer_url((int, int)): 
+            get_footer_url((int, int)):
                 tuple of the form (seconds, number_of_attempts). Determines the
                 behavior in case the received SDMX message has a footer where
                 one of its lines is a valid URL. ``get_footer_url`` defines how many attempts should be made to
                 request the resource at that URL after waiting so many seconds before each attempt.
                 This behavior is useful when requesting large datasets from Eurostat. Other agencies do not seem to
-                send such footers. Once an attempt to get the resource has been 
+                send such footers. Once an attempt to get the resource has been
                 successful, the original message containing the footer is dismissed and the dataset
                 is returned. The ``tofile`` argument is propagated. Note that the written file may be
                 a zip archive. pandaSDMX handles zip archives since version 0.2.1. Defaults to (30, 3).
-            memcache(str): If given, return Response instance if already in self.cache(dict), 
-            otherwise download resource and cache Response instance.             
-        writer(str): optional custom writer class. 
-            Should inherit from pandasdmx.writer.BaseWriter. Defaults to None, 
-            i.e. one of the included writers is selected as appropriate. 
+            memcache(str): If given, return Response instance if already in self.cache(dict),
+            otherwise download resource and cache Response instance.
+        writer(str): optional custom writer class.
+            Should inherit from pandasdmx.writer.BaseWriter. Defaults to None,
+            i.e. one of the included writers is selected as appropriate.
 
         Returns:
             pandasdmx.api.Response: instance containing the requested
@@ -304,10 +304,12 @@ class Request(object):
             # select reader class
             # expand this. For now, json reader is only
             # imported when loading file, not via http.
-            if fromfile and fromfile.endswith('.json'):
-                reader_module = import_module('pandasdmx.reader.sdmxjson')
-            else:
-                reader_module = import_module('pandasdmx.reader.sdmxml')
+            if not reader:
+                if fromfile and fromfile.endswith('.json'):
+                    reader = 'pandasdmx.reader.sdmxjson'
+                else:
+                    reader = 'pandasdmx.reader.sdmxml'
+            reader_module = import_module(reader)
             reader_cls = reader_module.Reader
             msg = reader_cls(self).initialize(source)
         # Check for URL in a footer and get the real data if so configured
@@ -343,8 +345,8 @@ class Request(object):
 
     def _make_key(self, flow_id, key):
         '''
-        Download the dataflow def. and DSD and validate 
-        key(dict) against it. 
+        Download the dataflow def. and DSD and validate
+        key(dict) against it.
 
         Return: key(str)
         '''
@@ -433,7 +435,7 @@ class Response(object):
         Args:
             msg(pandasdmx.model.Message): the SDMX message
             url(str): the URL, if any, that had been sent to the SDMX server
-            headers(dict): http headers 
+            headers(dict): http headers
             status_code(int): the status code returned by the server
             writer(str): the module path for the writer class
 
